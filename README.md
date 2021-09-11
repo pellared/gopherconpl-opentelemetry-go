@@ -1,5 +1,7 @@
 # Observability via OpenTelemtry Go - Quick Start
 
+[Presentation](https://docs.google.com/presentation/d/1ir9eyBLxO4n3zPcOPhxJkZJ9cXJSo7KUhuRAadG7z8Q/edit?usp=sharing)
+
 Run the database:
 
 ```sh
