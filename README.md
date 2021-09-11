@@ -3,21 +3,22 @@
 Run the database:
 
 ```sh
-docker run --name todo-db -p 5432:5432 -e POSTGRES_PASSWORD=pswd -v $(pwd)/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql -d --rm postgres:13-alpine
+docker run -d --name todo-db -p 5432:5432 -e POSTGRES_PASSWORD=pswd -v $(pwd)/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql postgres:13-alpine
 ```
 
-Run the service:
+Build and run the service:
 
 ```sh
-cd todoservice
-go run .
+cd cmd/todoservice && go install && cd -
+todoservice
 ```
 
-Run the CLI app:
+Build and use the CLI app:
 
 ```sh
-cd todo
-go run . add "important work"
-go run . list
-go run .
+cd cmd/todo && go install && cd -
+todo add "important work"
+todo list
+todo
+todo add "very long description that is extremely important"
 ```
