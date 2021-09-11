@@ -2,6 +2,12 @@
 
 [Presentation](https://docs.google.com/presentation/d/1ir9eyBLxO4n3zPcOPhxJkZJ9cXJSo7KUhuRAadG7z8Q/edit?usp=sharing)
 
+Run the distributed tracing backend:
+
+```sh
+docker run -d --name jaeger -p 16686:16686 -p 14268:14268 jaegertracing/all-in-one:1.26
+```
+
 Run the database:
 
 ```sh
@@ -24,3 +30,5 @@ todo list
 todo
 todo add "very long description that is extremely important"
 ```
+
+Navigate to <http://localhost:16686> to access the Jaeger UI.
