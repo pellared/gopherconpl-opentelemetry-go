@@ -2,19 +2,37 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"strconv"
+
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+
+	"github.com/pellared/gopherconpl-opentelemetry-go/telemetry"
 )
 
 const url = "http://localhost:8000"
 
-var client *http.Client = http.DefaultClient
+var client *http.Client
 
 func main() {
+	fn, err := telemetry.SetupTracing("todo", "http://localhost:14268/api/traces")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to setup tracing: %v\n", err)
+	}
+	defer func() {
+		if err := fn(context.Background()); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to shutdown tracing: %v\n", err)
+		}
+	}()
+
+	// Instrument http.Client with OpenTelemetry tracing.
+	client = &http.Client{Transport: otelhttp.NewTransport(http.DefaultTransport)}
+
 	if len(os.Args) == 1 {
 		printHelp()
 		os.Exit(0)
@@ -91,11 +109,10 @@ func listTasks() error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
 		return errors.New("HTTP: " + resp.Status)
 	}
-
-	defer resp.Body.Close()
 	_, err = io.Copy(os.Stdout, resp.Body)
 	return err
 }
@@ -107,6 +124,7 @@ func addTask(description string) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
 		return errors.New("HTTP: " + resp.Status)
 	}
@@ -122,6 +140,7 @@ func updateTask(itemNum int32, description string) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
 		return errors.New("HTTP: " + resp.Status)
 	}
@@ -134,6 +153,7 @@ func removeTask(itemNum int32) error {
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
 		return errors.New("HTTP: " + resp.Status)
 	}
