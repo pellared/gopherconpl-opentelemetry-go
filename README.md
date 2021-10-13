@@ -8,6 +8,12 @@ Run the distributed tracing backend:
 docker run -d --name jaeger -p 16686:16686 -p 14268:14268 jaegertracing/all-in-one:1.26
 ```
 
+Run the metrics backend:
+
+```sh
+docker run -d --name prometheus -p 9090:9090 -v $(pwd)/prometheus.yml:/etc/prometheus/prometheus.yml prom/prometheus:v2.29.2
+```
+
 Run the database:
 
 ```sh
@@ -32,3 +38,5 @@ todo add "very long description that is extremely important"
 ```
 
 Navigate to <http://localhost:16686> to access the Jaeger UI.
+
+Notice the exported metrics at <http://localhost:2222/>. Navigate to <http://localhost:9090> to access the Prometheus's expression browser.

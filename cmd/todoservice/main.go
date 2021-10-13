@@ -13,6 +13,8 @@ import (
 	"github.com/gorilla/mux"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"go.opentelemetry.io/contrib/instrumentation/github.com/gorilla/mux/otelmux"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/metric/global"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 
 	"github.com/pellared/gopherconpl-opentelemetry-go/telemetry"
@@ -20,14 +22,26 @@ import (
 
 var db *sql.DB
 
+const serviceName = "todoservice"
+
 func main() {
-	fn, err := telemetry.SetupTracing("todoservice", "http://localhost:14268/api/traces")
+	shutdownTracing, err := telemetry.SetupTracing(serviceName, "http://localhost:14268/api/traces")
 	if err != nil {
 		log.Fatalf("Failed to setup tracing: %v\n", err)
 	}
 	defer func() {
-		if err := fn(context.Background()); err != nil {
+		if err := shutdownTracing(context.Background()); err != nil {
 			log.Printf("Failed to shutdown tracing: %v\n", err)
+		}
+	}()
+
+	shutdownMetrics, err := telemetry.SetupMetrics(serviceName)
+	if err != nil {
+		log.Fatalf("Failed to setup metrics: %v\n", err)
+	}
+	defer func() {
+		if err := shutdownMetrics(context.Background()); err != nil {
+			log.Printf("Failed to shutdown metrics: %v\n", err)
 		}
 	}()
 
@@ -45,6 +59,13 @@ func main() {
 
 	// Instrument gorilla/mux with OpenTelemetry tracing.
 	r.Use(otelmux.Middleware("mux-server"))
+
+	// Add a custom metric
+	meter := global.Meter("todoservice")
+	addTaskCnt, err := meter.NewInt64Counter("tasks_added")
+	if err != nil {
+		log.Fatalf("Unable to create list_tasks metrics counter: %v\n", err)
+	}
 
 	r.HandleFunc("/", func(rw http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -76,6 +97,7 @@ func main() {
 			return
 		}
 		rw.WriteHeader(http.StatusCreated)
+		addTaskCnt.Add(ctx, 1)
 	}).Methods("POST")
 
 	r.HandleFunc("/{id:[0-9]+}", func(rw http.ResponseWriter, r *http.Request) {
@@ -119,7 +141,10 @@ func main() {
 		rw.WriteHeader(http.StatusNoContent)
 	}).Methods("DELETE")
 
-	log.Fatal(http.ListenAndServe(":8000", r))
+	// Instrument http.Handler with OpenTelemetry tracing and metrics.
+	otelHandler := otelhttp.NewHandler(r, "http-server")
+
+	log.Fatal(http.ListenAndServe(":8000", otelHandler))
 }
 
 type task struct {
